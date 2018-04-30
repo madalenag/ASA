@@ -102,6 +102,7 @@ void graphPrint();
 void edmondsKarp();
 
 Graph g;
+long long int flow = 0;
 
 Graph graphInit(int M, int N){
   g = (Graph)malloc(sizeof(struct graph));
@@ -131,7 +132,7 @@ void adjListPrint(Vertex v) {
   int j;
 
   for (j = 0; j < 6; j++) {
-    printf("%d -> %d, ", v.vec[j].u, v.vec[j].v);
+    printf("%d, ",v.vec[j].flow);
   }
 }
 
@@ -185,6 +186,7 @@ int main(int argc, char const *argv[]) {
       edge.direction = 0;
       edge.flow = min(g->vertexes[i * N + j].vec[5].capacity, cp);
       g->vertexes[i * N + j].vec[5].flow = min(g->vertexes[i * N + j].vec[5].capacity, cp);
+      flow += min(g->vertexes[i * N + j].vec[5].capacity, cp);
       g->vertexes[i * N + j].vec[0] = edge;
     }
   }
@@ -226,8 +228,6 @@ int main(int argc, char const *argv[]) {
     }
   }
 
-  //graphPrint();
-
 
   puts("");
 
@@ -243,7 +243,6 @@ int main(int argc, char const *argv[]) {
 void edmondsKarp() {
   int i, ver, direcao;
   long long int df;
-  long long int flow = 0;
   int t = g->V + 2;
   Edge e;
   Edge pred[t];
@@ -268,33 +267,33 @@ void edmondsKarp() {
       
       for (i = 1; i < 6; i++) {
         e = g->vertexes[ver].vec[i];
-        if (pred[e.v].capacity == -1 && e.v != 6 && e.capacity > e.flow) {
+        if (pred[e.v].capacity == -1 && e.capacity > e.flow) {
           pred[e.v] = e;
           insertLast(e.v);
         }
       }
     }
 
-    /*for (i = t-1 ; pred[i].capacity != -1; i = pred[i].u)
-    	printf("%d -> %d\n c/direção: %d\n", pred[i].u, pred[i].v, pred[i].direction);
-    puts("");*/
-
     if (pred[t - 1].capacity != -1) {
     	df = INT_MAX;
     	
-    	for (i = t - 1; pred[i].capacity != -1; i = pred[i].u)
+    	for (i = t - 1; pred[i].capacity != -1; i = pred[i].u) {
+        printf("%d -> %d, flow: %d \n", pred[i].u, pred[i].v, pred[i].flow);
 	    	df = min(df, pred[i].capacity - pred[i].flow);
+      }
+      puts("");
 
     	g->vertexes[pred[t-1].u].vec[5].flow += df;
     	ver = pred[t-1].u;
 
     	for (i = ver ; pred[i].capacity != -1; i = pred[i].u) {
-    		if (pred[i].u == 6) 
+    		if (pred[i].u == g->V) 
     			g->vertexes[i].vec[0].flow += df;
 
     		else {
     			direcao = pred[i].direction;
-	    		g->vertexes[pred[i].u].vec[direcao].flow += df;
+	    		g->vertexes[pred[i].u].vec[direcao].flow += df;          
+          //g->vertexes[i].vec[direcao].flow -= df;
 	    		//printf("%d -> %d tem flow: %d\n", g->vertexes[pred[i].u].vec[direcao].u, g->vertexes[pred[i].u].vec[direcao].v, g->vertexes[pred[i].u].vec[direcao].flow);
 
 	    		if (direcao == 1) direcao = 4;
@@ -302,10 +301,11 @@ void edmondsKarp() {
 	    		else if (direcao == 4) direcao = 1;
 	    		else if (direcao == 2) direcao = 3;
 	    		//printf("fc : %d -> %d tem flow: %d c/direcao: %d\n", g->vertexes[i].vec[direcao].u, g->vertexes[i].vec[direcao].v, g->vertexes[i].vec[direcao].flow, direcao);
-		    	g->vertexes[i].vec[direcao].flow -= df;
+          //g->vertexes[i].vec[direcao].flow = g->vertexes[i].vec[direcao].capacity - df;
 		    }
 	    }
 	    flow += df;
+      graphPrint();
     }
 
     printf("%lld\n", flow );
