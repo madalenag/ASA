@@ -7,292 +7,308 @@
 #define UNDEFINED -1
 #define min(a, b) (a<b ? a : b)
 
-typedef struct node *link;
+
+//QUEUE
 
 struct node {
-  int v;
-  link next;
+   int key;
+   struct node *next;
+   struct node *prev;
 };
 
-struct vertex {
-  int on_stack;
-  int low_link;
-  int index;
-  int minScc;
-};
+struct node *head = NULL;
+struct node *last = NULL;
+struct node *current = NULL;
+
+int isEmpty() {
+   return head == NULL;
+}
+
+/*int length() {
+   int length = 0;
+   struct node *current;
+
+   for(current = head; current != NULL; current = current->next){
+      length++;
+   }
+
+   return length;
+}*/
+
+void displayForward() {
+   struct node *ptr = head;
+   printf("\n[ ");
+
+   while(ptr != NULL) {
+      printf("(%d) ",ptr->key);
+      ptr = ptr->next;
+   }
+   printf(" ]");
+}
+
+
+void insertLast(int key) {
+   struct node *link = (struct node*) malloc(sizeof(struct node));
+   link->key = key;
+
+   if(isEmpty()) {
+   	  head = link;
+      last = link;
+   } else {
+      last->next = link;
+      link->prev = last;
+   }
+   last = link;
+}
+
+
+int deleteFirst() {
+   struct node *tempLink = head;
+
+   if(head->next == NULL){
+      last = NULL;
+   } else {
+      head->next->prev = NULL;
+   }
+
+   head = head->next;
+   return tempLink->key;
+}
+
+
+//Graph basis
+typedef struct{
+  int u, v;
+  int direction;
+  int capacity;
+  int flow;
+} Edge;
+
+typedef struct {
+  Edge vec[6];
+} Vertex;
+
 
 struct graph {
   long int V, E;
-  link *adj;
-  struct vertex *vertexes;
+  Vertex *vertexes;
 };
 
 typedef struct graph *Graph;
 
-typedef struct {
-  int u, v;
-} Edge;
+Graph graphInit(int, int);
+void graphDestroy();
+void graphPrint();
+void edmondsKarp();
 
-Graph graphInit(int);
-void graphInsert(Graph, int, int);
-void graphDestroy(Graph);
-void graphPrint(Graph);
-void tarjan(Graph g);
-void connections(Graph g);
-int eliminateDuplicates(Edge* v, Edge *vec, int dim);
+Graph g;
 
-link top;
-int idx = 0;
-int in = 0;
-int j = 0;
-int num = 0;
+Graph graphInit(int M, int N){
+  g = (Graph)malloc(sizeof(struct graph));
+  g->V= M * N;
+  g->E= 0;
+  g->vertexes = malloc((M*N) * sizeof(Vertex));
+  int i, j, k;
 
-int main(int argc, char const *argv[]) {
-  int N, M, u, v, i;
-  Graph graph;
+  Edge edge;
+  edge.capacity = -1;
+  edge.u = -1;
+  edge.v= -1;
+  edge.flow = -1;
 
-  scanf("%d\n", &N);
-  scanf("%d\n", &M);
-
-  if(N < 2 || M <1){
-    exit(1);
-  }
-
-  graph = graphInit(N);
-
-  for (i = 0; i < M; i++){
-    scanf("%d %d", &v, &u);
-    graphInsert(graph, v, u);
-  }
-
-  tarjan(graph);
-  connections(graph);
-  graphDestroy(graph);
-  
-  return 0;
-}
-
-link insertBegin(int v, link head){
-  link x = (link)malloc(sizeof(struct node));
-  x->v = v + 1;
-  x->next = head;
-  return x; 
-}
-
-
-Graph graphInit(int V){
-  int v;
-  Graph g = (Graph)malloc(sizeof(struct graph));
-  g->V=V;
-  g->E=0;
-  g->adj = (link*)malloc(V * sizeof(struct node));
-  g->vertexes = malloc(V * sizeof(struct vertex));
-  
-  for (v = 0; v < V; v++){
-    g->vertexes[v].on_stack = FALSE;
-    g->vertexes[v].low_link = -1;
-    g->vertexes[v].index = -1;
-    g->adj[v] = NULL;
+  for (i = 0; i < M ; i++) {
+      for (j = 0; j < N ; j++) {
+        for (k = 0; k < 6; k++) {
+          g->vertexes[i * N + j].vec[k] = edge;
+      }
+    }
   }
   return g;
 }
 
-void graphInsert(Graph g, int v, int u) {
-  v--;
-  u--;
-  
-  g->adj[v] = insertBegin(u, g->adj[v]);
-  g->E++; 
-}
 
+void adjListPrint(Vertex v) {
+  int j;
 
-void adjListPrint(link aux) {
-  while(aux != NULL) {
-    printf(("%d "),aux->v);
-    aux = aux->next;
-  }
-  printf("\n");
-
-}
-
-void deleteList(link head) {
-  link tmp;
-  while (head != NULL) {
-    tmp = head;
-    head = head->next;
-    free(tmp);
+  for (j = 0; j < 6; j++) {
+    printf("%d -> %d, ", v.vec[j].u, v.vec[j].v);
   }
 }
 
-void graphPrint(Graph g){
+
+void graphPrint(){
   int i;
   for (i = 0; i < g->V; i++){
-    printf("%d | ", i+1);
-    adjListPrint(g->adj[i]);    
+    printf("%d | ", i);
+    adjListPrint(g->vertexes[i]);
+    printf("\n");
   }
 }
 
-void graphDestroy(Graph g){
-  int v;
-  int V = g->V;
-
-  for(v = 0; v < V; v++)
-    deleteList(g->adj[v]);
-  
-  free(g->adj);
+void graphDestroy(){
   free(g->vertexes);
   free(g);
 }
 
 
 
+//MAIN
 
-void initStack() {
-  top = NULL;
-}
-
-void push(int value) {
-  link new = (link)malloc(sizeof(struct node));
-  new->v = value;
-  new->next = top;
-  top = new;
-}
-
-
-int pop() {
-  int v;
-  link old;
-
-  if (!(top == NULL)) {
-    v = top->v;
-    old = top;
-    top = top->next;
-    free(old);
-    return v;
-  }
-  return -1;
-}
-
-
-
-void scc(int v, Graph g, int SCCs[]) {
-  int u, k;
-  long long int min;
-  
-  g->vertexes[v].low_link = idx;
-  g->vertexes[v].index = idx;
-  idx++;
-  push(v);
-  g->vertexes[v].on_stack = TRUE;
-
-  link aux = g->adj[v];
-  while(aux != NULL) {
-    u = aux->v - 1;
-    if (g->vertexes[u].index == UNDEFINED) {
-      scc(u, g, SCCs);
-      int low_link_v = g->vertexes[v].low_link;
-      int low_link_u = g->vertexes[u].low_link;
-      g->vertexes[v].low_link= min(low_link_v, low_link_u);
-    }
-    else if (g->vertexes[u].on_stack) {
-      int low_link_v = g->vertexes[v].low_link;
-      int index_u = g->vertexes[u].index;
-      g->vertexes[v].low_link= min(low_link_v, index_u);  
-    }
-    aux = aux->next;
-  }
-
-  if (g->vertexes[v].low_link == g->vertexes[v].index) {
-    num++;
-    min = INT_MAX;
-    do {
-      u = pop();
-      SCCs[in++] = u;
-      min = min(u, min);
-      g->vertexes[u].on_stack = FALSE;  
-    } while ( u != v);
-
-    for (k = j; k < in; k++) 
-      g->vertexes[SCCs[k]].minScc = min;    
-    j = in;
-  }
-
-}
-
-
-void tarjan(Graph g) {
-  initStack();
-  int SCCs[g->V];
-  int i;
-  for (i = 0; i < g->V; i++) {
-    if (g->vertexes[i].index == UNDEFINED){
-      scc(i, g, SCCs);
-    }
-  }
-
-  printf("%d\n", num);
-}
-
-int comparator(const void *p, const void *q) {
-  int u1 = ((Edge *)p)->u;
-  int u2 = ((Edge *)q)->u;
-  int v1 = ((Edge *)p)->v;
-  int v2 = ((Edge *)q)->v;
-
-  if (u1 == u2)
-    return v1 - v2;
-  return u1 - u2;
-}
-
-
-int eliminateDuplicates(Edge* v, Edge *vec, int dim) {
-  int i;
-  int count = 0;
-
+int main(int argc, char const *argv[]) {
+  int N, M, i, j, peso;
+  int lp, cp;
   Edge edge;
-  edge.u = 0;
-  edge.v = 0;
 
+  scanf("%d\n", &M);
+  scanf("%d\n", &N);
 
-  for (i = 0; i < dim; i++) {
-    if (v[i].u != edge.u || v[i].v != edge.v) {
-      vec[count].u = v[i].u;
-      vec[count].v = v[i].v;
-      edge.u = v[i].u;
-      edge.v = v[i].v;
-      count++;
-    }
-  }
-  return count;
-}
+  g = graphInit(M, N);
 
-
-void connections(Graph g) {
-  int i;
-  Edge *v = (Edge*) malloc (sizeof(Edge) * g->E);
-  Edge *vec = (Edge*) malloc (sizeof(Edge) * g->E);
-  int count = 0;
-
-  for (i = 0; i < g->V; i++) {
-    link aux = g->adj[i];
-    while(aux != NULL) {
-      Edge edge;
-      edge.u = g->vertexes[i].minScc;
-      edge.v = g->vertexes[aux->v - 1].minScc;
-      if (edge.u != edge.v) 
-        v[count++] = edge;
-      aux = aux->next;
+  for (i = 0; i < M; i++){
+    for (j = 0; j < N; j++) {
+      scanf("%d", &lp);
+      edge.u =  i * N + j;
+      edge.v = M * N + 1;
+      edge.capacity = lp;
+      edge.flow = 0;
+      edge.direction = 5;
+      g->vertexes[ i * N + j].vec[5] = edge;
     }
   }
 
-  qsort(v, count, sizeof(Edge), comparator);
-  count = eliminateDuplicates(v, vec, count);
+  for (i = 0; i < M; i++){
+    for (j = 0; j < N; j++) {
+      scanf("%d", &cp);
+      edge.v = i * N + j;
+      edge.u = M * N;
+      edge.capacity = cp;
+      edge.direction = 0;
+      edge.flow = min(g->vertexes[i * N + j].vec[5].capacity, cp);
+      g->vertexes[i * N + j].vec[5].flow = min(g->vertexes[i * N + j].vec[5].capacity, cp);
+      g->vertexes[i * N + j].vec[0] = edge;
+    }
+  }
 
-  printf("%d\n", count ); 
+  for (i = 0; i < M; i++){
+    for (j = 0; j < N - 1; j++) {
+      scanf("%d", &peso);
 
-  for (i = 0; i < count; i++)
-    printf("%d %d\n", vec[i].u + 1, vec[i].v + 1);
+      edge.u = i * N + j;
+      edge.v = i * N + j + 1;
+      edge.capacity = peso;
+      edge.flow = 0;
+      edge.direction = 4;
+      g->vertexes[i * N + j].vec[4] = edge;
 
-  free(v);
-  free(vec);
+      edge.u = i * N + j + 1;
+      edge.v = i * N + j;
+      edge.direction = 1;
+      g->vertexes[i * N + j + 1].vec[1] = edge;
+    }
+  }
+
+
+  for (i = 0; i < M - 1; i++){
+    for (j = 0; j < N ; j++) {
+      scanf("%d", &peso);
+
+      edge.u = i * N + j;
+      edge.v = (i + 1) * N + j;
+      edge.capacity = peso;
+      edge.flow = 0;
+      edge.direction = 3;
+      g->vertexes[i * N + j].vec[3] = edge;
+
+      edge.u = (i + 1) * N + j;
+      edge.v = i * N + j;
+      edge.direction = 2;
+      g->vertexes[(i + 1) * N + j].vec[2] = edge;
+    }
+  }
+
+  //graphPrint();
+
+
+  puts("");
+
+  edmondsKarp();
+  //graphDestroy(graph);
+
+  return 0;
 }
+
+
+//EDMONDS KARP
+
+void edmondsKarp() {
+  int i, ver, direcao;
+  long long int df;
+  long long int flow = 0;
+  int t = g->V + 2;
+  Edge e;
+  Edge pred[t];
+
+  do {
+  	for (i = 0; i < t; i++) {
+	    pred[i].capacity = -1;
+	    pred[i].v = -1;
+	    pred[i].u = -1;
+  	}
+
+    for (i = 0; i < g->V; i++) {
+      e = g->vertexes[i].vec[0];
+      if (e.capacity > e.flow) {
+        pred[e.v] = e;
+        insertLast(e.v);
+      }
+    }
+
+    while (!isEmpty()) {
+      ver = deleteFirst();
+      
+      for (i = 1; i < 6; i++) {
+        e = g->vertexes[ver].vec[i];
+        if (pred[e.v].capacity == -1 && e.v != 6 && e.capacity > e.flow) {
+          pred[e.v] = e;
+          insertLast(e.v);
+        }
+      }
+    }
+
+    /*for (i = t-1 ; pred[i].capacity != -1; i = pred[i].u)
+    	printf("%d -> %d\n c/direção: %d\n", pred[i].u, pred[i].v, pred[i].direction);
+    puts("");*/
+
+    if (pred[t - 1].capacity != -1) {
+    	df = INT_MAX;
+    	
+    	for (i = t - 1; pred[i].capacity != -1; i = pred[i].u)
+	    	df = min(df, pred[i].capacity - pred[i].flow);
+
+    	g->vertexes[pred[t-1].u].vec[5].flow += df;
+    	ver = pred[t-1].u;
+
+    	for (i = ver ; pred[i].capacity != -1; i = pred[i].u) {
+    		if (pred[i].u == 6) 
+    			g->vertexes[i].vec[0].flow += df;
+
+    		else {
+    			direcao = pred[i].direction;
+	    		g->vertexes[pred[i].u].vec[direcao].flow += df;
+	    		//printf("%d -> %d tem flow: %d\n", g->vertexes[pred[i].u].vec[direcao].u, g->vertexes[pred[i].u].vec[direcao].v, g->vertexes[pred[i].u].vec[direcao].flow);
+
+	    		if (direcao == 1) direcao = 4;
+	    		else if (direcao == 3) direcao = 2;
+	    		else if (direcao == 4) direcao = 1;
+	    		else if (direcao == 2) direcao = 3;
+	    		//printf("fc : %d -> %d tem flow: %d c/direcao: %d\n", g->vertexes[i].vec[direcao].u, g->vertexes[i].vec[direcao].v, g->vertexes[i].vec[direcao].flow, direcao);
+		    	g->vertexes[i].vec[direcao].flow -= df;
+		    }
+	    }
+	    flow += df;
+    }
+
+    printf("%lld\n", flow );
+  } while (pred[t-1].capacity != -1);
+}
+
